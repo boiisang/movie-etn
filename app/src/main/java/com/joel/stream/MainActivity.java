@@ -32,6 +32,9 @@ public class MainActivity extends Activity {
     private EditText search;
     private SharedPreferences prefs;
     private String mode = "home";
+    private MediaItem[] items = Catalog.ITEMS;
+    private TmdbConfig tmdbConfig;
+    private String catalogStatus = "Sample catalog ready";
     private final java.util.HashMap<String, TextView> navItems = new java.util.HashMap<String, TextView>();
 
     @Override
@@ -40,6 +43,7 @@ public class MainActivity extends Activity {
         getWindow().setStatusBarColor(0xff101112);
         getWindow().setNavigationBarColor(0xff101112);
         prefs = getSharedPreferences("library", MODE_PRIVATE);
+        tmdbConfig = TmdbConfig.load(this);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -56,6 +60,7 @@ public class MainActivity extends Activity {
         setContentView(root);
 
         render();
+        loadTrendingCatalog();
     }
 
     private void render() {
@@ -80,11 +85,11 @@ public class MainActivity extends Activity {
     }
 
     private void renderHeader() {
-        TextView title = text("Joel Stream", 34, TEXT, true);
+        TextView title = text("Movie Etna", 34, TEXT, true);
         content.addView(title, lp(-1, -2, 0, 0, 0, 12));
         search = new EditText(this);
         search.setSingleLine(true);
-        search.setHint("Search open movies and sample videos");
+        search.setHint("Search movies and sample videos");
         search.setHintTextColor(0xff777c84);
         search.setTextColor(TEXT);
         search.setTextSize(15);
@@ -98,12 +103,17 @@ public class MainActivity extends Activity {
             public void afterTextChanged(Editable s) {}
         });
         content.addView(search, lp(-1, dp(52), 0, 0, 0, 20));
+        TextView status = text(catalogStatus, 13, MUTED, false);
+        content.addView(status, lp(-1, -2, 0, -8, 0, 18));
     }
 
     private void renderHome() {
-        featured(Catalog.ITEMS[0]);
-        section("Featured", "", Catalog.ITEMS);
-        section("Open Movies", "Open Movie", Catalog.ITEMS);
+        MediaItem[] current = currentItems();
+        featured(current[0]);
+        section("Latest Movies and Series", "", current);
+        section("Latest Movies", "TMDB Movie", current);
+        section("Latest Series", "TMDB Series", current);
+        section("Playback Samples", "", Catalog.ITEMS);
         section("Short Samples", "Sample Short", Catalog.ITEMS);
     }
 
@@ -130,12 +140,12 @@ public class MainActivity extends Activity {
     }
 
     private void drawSearchResults(String query) {
-        while (content.getChildCount() > 3) content.removeViewAt(3);
+        while (content.getChildCount() > 4) content.removeViewAt(4);
         String q = query == null ? "" : query.trim().toLowerCase();
         LinearLayout results = new LinearLayout(this);
         results.setOrientation(LinearLayout.VERTICAL);
         int count = 0;
-        for (MediaItem item : Catalog.ITEMS) {
+        for (MediaItem item : currentItems()) {
             if (q.length() == 0 || item.title.toLowerCase().contains(q) || item.category.toLowerCase().contains(q)) {
                 results.addView(row(item), lp(-1, dp(106), 0, 0, 0, 12));
                 count++;
@@ -149,7 +159,9 @@ public class MainActivity extends Activity {
 
     private void renderSettings() {
         content.addView(text("Settings", 34, TEXT, true), lp(-1, -2, 0, 6, 0, 12));
-        content.addView(settingsCard("About", "Joel Stream is a clean internal media app built by Joel Dongthansang for authorized sample and public-domain streams."));
+        content.addView(settingsCard("About", "Movie Etna is a clean internal media app built by Joel Dongthansang for authorized sample and public-domain streams."));
+        content.addView(settingsCard("Copyright", "Copyright (c) 2026 Joel Dongthansang. All rights reserved. Movie Etna and its app source are maintained by Joel Dongthansang."));
+        content.addView(settingsCard("Live catalog", tmdbConfig.isConfigured() ? "Movie and series metadata loads from TMDB when internet is available. Playback remains limited to authorized sample streams in this internal build." : "No TMDB config is bundled. The app is using its offline sample catalog."));
         content.addView(settingsCard("Clean build", "Monetization screens, payment flows, analytics SDKs, and remote config dependencies are not included."));
         content.addView(settingsCard("Content rights", "The bundled catalog uses public sample/open movie streams. Add only content you own or are licensed to distribute."));
         content.addView(settingsCard("Privacy", "This build does not request accounts, location, camera, microphone, contacts, or marketing identifiers."));
@@ -171,16 +183,19 @@ public class MainActivity extends Activity {
     }
 
     private void section(String title, String category, MediaItem[] source) {
-        content.addView(text(title, 24, TEXT, true), lp(-1, -2, 0, 8, 0, 12));
         HorizontalScrollView hsv = new HorizontalScrollView(this);
         hsv.setHorizontalScrollBarEnabled(false);
         LinearLayout rail = new LinearLayout(this);
         rail.setOrientation(LinearLayout.HORIZONTAL);
+        int count = 0;
         for (MediaItem item : source) {
             if (category.length() == 0 || item.category.equals(category)) {
                 rail.addView(card(item), lp(dp(174), dp(292), 0, 0, 14, 0));
+                count++;
             }
         }
+        if (count == 0) return;
+        content.addView(text(title, 24, TEXT, true), lp(-1, -2, 0, 8, 0, 12));
         hsv.addView(rail, new ViewGroup.LayoutParams(-2, -2));
         content.addView(hsv, lp(-1, -2, 0, 0, 0, 22));
     }
@@ -268,15 +283,61 @@ public class MainActivity extends Activity {
     private void openPlayer(MediaItem item) {
         Intent intent = new Intent(this, PlayerActivity.class);
         intent.putExtra("title", item.title);
+        intent.putExtra("category", item.category);
+        intent.putExtra("year", item.year);
+        intent.putExtra("duration", item.duration);
+        intent.putExtra("description", item.description);
+        intent.putExtra("videoUrl", item.videoUrl);
+        intent.putExtra("colorA", item.colorA);
+        intent.putExtra("colorB", item.colorB);
         startActivity(intent);
     }
 
     private MediaItem[] savedItems() {
         java.util.ArrayList<MediaItem> list = new java.util.ArrayList<MediaItem>();
-        for (MediaItem item : Catalog.ITEMS) {
+        for (MediaItem item : currentItems()) {
             if (prefs.getBoolean("saved_" + item.title, false)) list.add(item);
         }
         return list.toArray(new MediaItem[0]);
+    }
+
+    private MediaItem[] currentItems() {
+        return items == null || items.length == 0 ? Catalog.ITEMS : items;
+    }
+
+    private void loadTrendingCatalog() {
+        if (!tmdbConfig.isConfigured()) {
+            catalogStatus = "Offline sample catalog";
+            render();
+            return;
+        }
+        catalogStatus = "Loading live movie metadata...";
+        render();
+        new Thread(new Runnable() {
+            public void run() {
+                try {
+                    final MediaItem[] loaded = TmdbClient.trending(tmdbConfig);
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            if (loaded.length > 0) {
+                                items = loaded;
+                                catalogStatus = "Live movie metadata loaded";
+                            } else {
+                                catalogStatus = "Sample catalog ready";
+                            }
+                            render();
+                        }
+                    });
+                } catch (Exception e) {
+                    runOnUiThread(new Runnable() {
+                        public void run() {
+                            catalogStatus = "Sample catalog ready";
+                            render();
+                        }
+                    });
+                }
+            }
+        }).start();
     }
 
     static TextView text(Context c, String value, int sp, int color, boolean bold) {

@@ -50,14 +50,8 @@ public class PlayerActivity extends Activity {
         getWindow().setNavigationBarColor(BG);
         handler = new Handler(Looper.getMainLooper());
         prefs = getSharedPreferences("library", MODE_PRIVATE);
-        item = Catalog.findByTitle(getIntent().getStringExtra("title"));
-        streamCandidates = new String[] {
-            item.videoUrl,
-            "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4",
-            "https://media.w3.org/2010/05/sintel/trailer.mp4",
-            "https://media.w3.org/2010/05/video/movie_300.mp4",
-            "https://download.samplelib.com/mp4/sample-5s.mp4"
-        };
+        item = itemFromIntent();
+        streamCandidates = SampleStreams.fallbacks(item.videoUrl);
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -126,6 +120,29 @@ public class PlayerActivity extends Activity {
     private void startVideo() {
         streamIndex = 0;
         playCurrentCandidate("Loading stream...");
+    }
+
+    private MediaItem itemFromIntent() {
+        String title = getIntent().getStringExtra("title");
+        String videoUrl = getIntent().getStringExtra("videoUrl");
+        if (videoUrl == null || videoUrl.trim().length() == 0) {
+            return Catalog.findByTitle(title);
+        }
+        return new MediaItem(
+            value("title", "Untitled"),
+            value("category", "Media"),
+            value("year", "TMDB"),
+            value("duration", "sample play"),
+            value("description", "Metadata loaded for this title. Playback uses authorized sample streams in this internal build."),
+            videoUrl,
+            getIntent().getIntExtra("colorA", 0xfff25f4c),
+            getIntent().getIntExtra("colorB", 0xff5cc8ff)
+        );
+    }
+
+    private String value(String key, String fallback) {
+        String value = getIntent().getStringExtra(key);
+        return value == null || value.trim().length() == 0 ? fallback : value;
     }
 
     private void playCurrentCandidate(String message) {

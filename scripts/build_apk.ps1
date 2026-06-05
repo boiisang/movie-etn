@@ -47,15 +47,21 @@ New-Item -ItemType Directory -Force -Path $compiled, $classes, $dex, $gen | Out-
 
 $manifest = Join-Path $ProjectRoot "app\src\main\AndroidManifest.xml"
 $res = Join-Path $ProjectRoot "app\src\main\res"
+$assets = Join-Path $ProjectRoot "app\src\main\assets"
 $sourceRoot = Join-Path $ProjectRoot "app\src\main\java"
 
 $flat = Join-Path $compiled "resources.zip"
 & $aapt2 compile --dir $res -o $flat
 if ($LASTEXITCODE -ne 0) { throw "aapt2 compile failed" }
 
-$unsigned = Join-Path $ProjectRoot "builds\unsigned\JoelStream-$stamp-unsigned.apk"
+$unsigned = Join-Path $ProjectRoot "builds\unsigned\MovieEtna-$stamp-unsigned.apk"
 New-Item -ItemType Directory -Force -Path (Split-Path $unsigned) | Out-Null
-& $aapt2 link -o $unsigned -I $androidJar --manifest $manifest --java $gen $flat
+$linkArgs = @("link", "-o", $unsigned, "-I", $androidJar, "--manifest", $manifest, "--java", $gen)
+if (Test-Path -LiteralPath $assets) {
+    $linkArgs += @("-A", $assets)
+}
+$linkArgs += $flat
+& $aapt2 @linkArgs
 if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
 
 $sources = @()
@@ -84,20 +90,20 @@ Push-Location $dex
 Pop-Location
 if ($LASTEXITCODE -ne 0) { throw "adding classes.dex failed" }
 
-$aligned = Join-Path $ProjectRoot "builds\aligned\JoelStream-$stamp-aligned.apk"
+$aligned = Join-Path $ProjectRoot "builds\aligned\MovieEtna-$stamp-aligned.apk"
 New-Item -ItemType Directory -Force -Path (Split-Path $aligned) | Out-Null
 & $zipalign -p 4 $unsigned $aligned
 if ($LASTEXITCODE -ne 0) { throw "zipalign failed" }
 
-$ks = Join-Path $ProjectRoot "builds\joel-stream-internal.jks"
+$ks = Join-Path $ProjectRoot "builds\movie-etna-internal.jks"
 if (-not (Test-Path -LiteralPath $ks)) {
-    & $keytool -genkeypair -v -keystore $ks -storepass "joelstream-internal" -keypass "joelstream-internal" -alias "joelstream" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Joel Dongthansang, OU=Internal, O=Joel Stream, L=Churachandpur, ST=Manipur, C=IN"
+    & $keytool -genkeypair -v -keystore $ks -storepass "movieetna-internal" -keypass "movieetna-internal" -alias "movieetna" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Joel Dongthansang, OU=Internal, O=Movie Etna, L=Churachandpur, ST=Manipur, C=IN"
     if ($LASTEXITCODE -ne 0) { throw "keytool failed" }
 }
 
-$signed = Join-Path $ProjectRoot "builds\signed\JoelStream-$stamp-signed.apk"
+$signed = Join-Path $ProjectRoot "builds\signed\MovieEtna-$stamp-signed.apk"
 New-Item -ItemType Directory -Force -Path (Split-Path $signed) | Out-Null
-& $apksigner sign --ks $ks --ks-key-alias "joelstream" --ks-pass "pass:joelstream-internal" --key-pass "pass:joelstream-internal" --out $signed $aligned
+& $apksigner sign --ks $ks --ks-key-alias "movieetna" --ks-pass "pass:movieetna-internal" --key-pass "pass:movieetna-internal" --out $signed $aligned
 if ($LASTEXITCODE -ne 0) { throw "apksigner sign failed" }
 
 $verifyLog = Join-Path $logs "apksigner_verify_$stamp.txt"
@@ -107,12 +113,12 @@ if ($LASTEXITCODE -ne 0) { throw "apksigner verify failed" }
 $latestDir = Join-Path $ProjectRoot "deliverables\latest"
 $testedDir = Join-Path $ProjectRoot "builds\tested"
 New-Item -ItemType Directory -Force -Path $latestDir, $testedDir | Out-Null
-$latest = Join-Path $latestDir "JoelStream-latest.apk"
-$tested = Join-Path $testedDir "JoelStream-$stamp-tested.apk"
+$latest = Join-Path $latestDir "MovieEtna-latest.apk"
+$tested = Join-Path $testedDir "MovieEtna-$stamp-tested.apk"
 Copy-Item -LiteralPath $signed -Destination $latest -Force
 Copy-Item -LiteralPath $signed -Destination $tested -Force
 $hash = Get-FileHash -LiteralPath $latest -Algorithm SHA256
-"$($hash.Hash)  JoelStream-latest.apk" | Set-Content -LiteralPath "$latest.sha256" -Encoding ascii
+"$($hash.Hash)  MovieEtna-latest.apk" | Set-Content -LiteralPath "$latest.sha256" -Encoding ascii
 
 [pscustomobject]@{
     Unsigned = $unsigned
