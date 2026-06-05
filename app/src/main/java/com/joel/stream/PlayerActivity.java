@@ -109,7 +109,7 @@ public class PlayerActivity extends Activity {
         actions.addView(replay, new LinearLayout.LayoutParams(0, dp(48), 1));
         root.addView(actions, lp(-1, -2, 0, 0, 0, 18));
 
-        TextView note = MainActivity.text(this, "This player uses direct HTTPS sample streams. Add only media you own or are licensed to distribute.", 13, MUTED, false);
+        TextView note = MainActivity.text(this, "This player uses direct HTTPS public-domain, Creative Commons, or open sample streams. Add only media you own or are licensed to distribute.", 13, MUTED, false);
         note.setLineSpacing(dp(2), 1.0f);
         root.addView(note, lp(-1, -2, 0, 0, 0, 0));
 
@@ -132,8 +132,8 @@ public class PlayerActivity extends Activity {
             value("title", "Untitled"),
             value("category", "Media"),
             value("year", "TMDB"),
-            value("duration", "sample play"),
-            value("description", "Metadata loaded for this title. Playback uses authorized sample streams in this internal build."),
+            value("duration", "metadata"),
+            value("description", "Metadata loaded for this title. Select watchable catalog items for bundled legal playback."),
             videoUrl,
             getIntent().getIntExtra("colorA", 0xfff25f4c),
             getIntent().getIntExtra("colorB", 0xff5cc8ff)

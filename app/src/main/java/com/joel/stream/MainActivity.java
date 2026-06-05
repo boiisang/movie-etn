@@ -109,18 +109,20 @@ public class MainActivity extends Activity {
 
     private void renderHome() {
         MediaItem[] current = currentItems();
-        featured(current[0]);
-        section("Latest Movies and Series", "", current);
-        section("Latest Movies", "TMDB Movie", current);
-        section("Latest Series", "TMDB Series", current);
-        section("Playback Samples", "", Catalog.ITEMS);
+        featured(Catalog.ITEMS[0]);
+        section("Watchable Movies", "Watchable Movie", Catalog.ITEMS);
+        section("Open Movies", "Open Movie", Catalog.ITEMS);
+        section("Open Series", "Open Series", Catalog.ITEMS);
+        if (current != Catalog.ITEMS) {
+            section("Latest TMDB Metadata", "", current);
+        }
         section("Short Samples", "Sample Short", Catalog.ITEMS);
     }
 
     private void renderLibrary() {
         TextView heading = text("Library", 30, TEXT, true);
         content.addView(heading, lp(-1, -2, 0, 4, 0, 8));
-        TextView sub = text("Saved videos stay here for quick access. Streaming still uses the authorized public sample URLs.", 15, MUTED, false);
+        TextView sub = text("Saved videos stay here for quick access. Streaming uses authorized public/open URLs bundled in this build.", 15, MUTED, false);
         content.addView(sub, lp(-1, -2, 0, 0, 0, 18));
         MediaItem[] saved = savedItems();
         if (saved.length == 0) {
@@ -145,7 +147,7 @@ public class MainActivity extends Activity {
         LinearLayout results = new LinearLayout(this);
         results.setOrientation(LinearLayout.VERTICAL);
         int count = 0;
-        for (MediaItem item : currentItems()) {
+        for (MediaItem item : allItems()) {
             if (q.length() == 0 || item.title.toLowerCase().contains(q) || item.category.toLowerCase().contains(q)) {
                 results.addView(row(item), lp(-1, dp(106), 0, 0, 0, 12));
                 count++;
@@ -161,9 +163,9 @@ public class MainActivity extends Activity {
         content.addView(text("Settings", 34, TEXT, true), lp(-1, -2, 0, 6, 0, 12));
         content.addView(settingsCard("About", "Movie Etna is a clean internal media app built by Joel Dongthansang for authorized sample and public-domain streams."));
         content.addView(settingsCard("Copyright", "Copyright (c) 2026 Joel Dongthansang. All rights reserved. Movie Etna and its app source are maintained by Joel Dongthansang."));
-        content.addView(settingsCard("Live catalog", tmdbConfig.isConfigured() ? "Movie and series metadata loads from TMDB when internet is available. Playback remains limited to authorized sample streams in this internal build." : "No TMDB config is bundled. The app is using its offline sample catalog."));
+        content.addView(settingsCard("Live catalog", tmdbConfig.isConfigured() ? "Movie and series metadata loads from TMDB when internet is available. Watchable videos use authorized public/open streams bundled in this build." : "No TMDB config is bundled. The app is using its offline watchable catalog."));
         content.addView(settingsCard("Clean build", "Monetization screens, payment flows, analytics SDKs, and remote config dependencies are not included."));
-        content.addView(settingsCard("Content rights", "The bundled catalog uses public sample/open movie streams. Add only content you own or are licensed to distribute."));
+        content.addView(settingsCard("Content rights", "The bundled catalog uses public-domain and Creative Commons/open movie streams. Add only content you own or are licensed to distribute."));
         content.addView(settingsCard("Privacy", "This build does not request accounts, location, camera, microphone, contacts, or marketing identifiers."));
     }
 
@@ -295,7 +297,7 @@ public class MainActivity extends Activity {
 
     private MediaItem[] savedItems() {
         java.util.ArrayList<MediaItem> list = new java.util.ArrayList<MediaItem>();
-        for (MediaItem item : currentItems()) {
+        for (MediaItem item : allItems()) {
             if (prefs.getBoolean("saved_" + item.title, false)) list.add(item);
         }
         return list.toArray(new MediaItem[0]);
@@ -303,6 +305,15 @@ public class MainActivity extends Activity {
 
     private MediaItem[] currentItems() {
         return items == null || items.length == 0 ? Catalog.ITEMS : items;
+    }
+
+    private MediaItem[] allItems() {
+        MediaItem[] current = currentItems();
+        if (current == Catalog.ITEMS) return Catalog.ITEMS;
+        java.util.ArrayList<MediaItem> merged = new java.util.ArrayList<MediaItem>();
+        for (MediaItem item : Catalog.ITEMS) merged.add(item);
+        for (MediaItem item : current) merged.add(item);
+        return merged.toArray(new MediaItem[0]);
     }
 
     private void loadTrendingCatalog() {

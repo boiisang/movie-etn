@@ -40,7 +40,7 @@ final class TmdbClient {
             String year = release.length() >= 4 ? release.substring(0, 4) : "TMDB";
             String overview = obj.optString("overview");
             if (overview.trim().length() == 0) {
-                overview = "Metadata loaded from TMDB. Playback uses authorized sample streams in this internal build.";
+                overview = "Metadata loaded from TMDB. This discovery item is not a bundled movie stream.";
             }
             String category = "tv".equals(mediaType) ? "TMDB Series" : "TMDB Movie";
             int colorA = colorFor(i, 0);
@@ -49,8 +49,8 @@ final class TmdbClient {
                 title,
                 category,
                 year,
-                "sample play",
-                overview,
+                "metadata",
+                overview + " Select watchable catalog items for bundled legal playback.",
                 SampleStreams.forIndex(i),
                 colorA,
                 colorB

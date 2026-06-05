@@ -17,8 +17,10 @@ final class SampleStreams {
     }
 
     static String[] fallbacks(String preferred) {
+        if (preferred != null && preferred.trim().length() > 0) {
+            return new String[] { preferred.trim() };
+        }
         return new String[] {
-            preferred,
             URLS[0],
             URLS[1],
             URLS[2],
@@ -27,4 +29,3 @@ final class SampleStreams {
         };
     }
 }
-
