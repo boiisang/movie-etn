@@ -1,0 +1,31 @@
+# Android/manual build output
+/build/
+/builds/
+/deliverables/
+
+# Validation artifacts
+/logs/
+/emulator/
+/reports/
+
+# Local signing material
+*.jks
+*.keystore
+*.pem
+*.p12
+
+# Generated binaries
+*.apk
+*.apks
+*.aab
+*.dex
+*.class
+*.jar
+
+# Local/editor files
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+Desktop.ini
+
